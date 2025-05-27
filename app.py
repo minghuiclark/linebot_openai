@@ -11,7 +11,7 @@ from linebot.models import *
 #======python的函數庫==========
 import tempfile, os
 import datetime
-import openai
+from google import genai
 import time
 import traceback
 #======python的函數庫==========
@@ -23,13 +23,17 @@ line_bot_api = LineBotApi(os.getenv('CHANNEL_ACCESS_TOKEN'))
 # Channel Secret
 handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 # OPENAI API Key初始化設定
-openai.api_key = os.getenv('OPENAI_API_KEY')
+#openai.api_key = os.getenv('OPENAI_API_KEY')
+genai.configure(api_key="gemini-2.0-flash-lite")
 
 
 def GPT_response(text):
     # 接收回應
-    response = openai.Completion.create(model="gpt-3.5-turbo-instruct", prompt=text, temperature=0.5, max_tokens=500)
-    print(response)
+    model = "gemini-2.0-flash-lite"
+    client = genai.Client(api_key=GOOGLE_API_KEY)
+    #response = openai.Completion.create(model="gpt-3.5-turbo-instruct", prompt=text, temperature=0.5, max_tokens=500)
+    response =client.models.generate_content_stream(model=model_name,contents=text)
+    print(response.text)
     # 重組回應
     answer = response['choices'][0]['text'].replace('。','')
     return answer
