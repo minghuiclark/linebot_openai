@@ -30,8 +30,43 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 # genai.configure(api_key="gemini-2.0-flash-lite")
 model_name = "gemini-2.0-flash-lite"
 client = genai.Client(api_key=GOOGLE_API_KEY)
+
 def GPT_response(text):
-    # 接收回應    
+    # 接收回應
+
+    contents = [
+        {
+            "parts": [
+                {"text": text}
+            ]
+        }
+    ]
+
+    # 獲取流式響應，確保 stream=True
+    response_stream = client.models.generate_content(
+        model=model_name,
+        contents=contents,
+        stream=True
+    )
+
+    full_answer = ""
+    # 迭代生成器，逐塊獲取文本
+    for chunk in response_stream:
+        # 每個 chunk 是一個 GenerateContentResponse 對象
+        # 它的 text 屬性包含部分響應
+        if chunk.text: # 檢查 chunk.text 是否為空，因為有時可能會返回空 chunk
+            full_answer += chunk.text
+
+    # 印出完整的響應文本 (用於調試，正式部署時可移除)
+    print(full_answer) 
+    
+    # 重組回應
+    # 移除句號（如果這是您的需求）
+    answer = full_answer.replace('。', '')
+    #answer = response['choices'][0]['text'].replace('。','')
+    
+def GPT_response1(text):
+    # 接收回應   
     
     #response = openai.Completion.create(model="gpt-3.5-turbo-instruct", prompt=text, temperature=0.5, max_tokens=500)
     response =client.models.generate_content_stream(model=model_name,contents=text)
