@@ -29,7 +29,7 @@ handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 
 def GPT_response(text):
     # 接收回應
-    model = "gemini-2.0-flash-lite"
+    model_name = "gemini-2.0-flash-lite"
     client = genai.Client(api_key=GOOGLE_API_KEY)
     #response = openai.Completion.create(model="gpt-3.5-turbo-instruct", prompt=text, temperature=0.5, max_tokens=500)
     response =client.models.generate_content_stream(model=model_name,contents=text)
