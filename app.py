@@ -110,7 +110,7 @@ def callback():
 
 # 處理訊息
 @handler.add(MessageEvent, message=TextMessage)
-def handle_message-1(event):
+def handle_message1(event):
     msg = event.message.text
     try:
         GPT_answer = GPT_response(msg)
