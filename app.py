@@ -53,13 +53,18 @@ def GPT_response(text, client, model_name):
 
     full_answer = ""
     try:
+            # 獲取流式響應，確保 stream=True
+
         # 獲取串流響應
         # 注意這裡使用 genai.GenerativeModel 而不是 client.models.generate_content
         # 因為 client 通常就是 genai 模組本身
-        response_stream = client.GenerativeModel(model_name=model_name).generate_content(
-            contents=contents,
-            stream=True # 確保是串流模式
-        )
+        # response_stream = client.GenerativeModel(model_name=model_name).generate_content(
+        #     contents=contents,            
+        # )
+        response_stream = client.models.generate_content(
+        model=model_name,
+        contents=contents,
+    )
 
         # 迭代生成器，逐塊獲取文本
         for chunk in response_stream:
