@@ -31,7 +31,7 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 model_name = "gemini-2.0-flash-lite"
 client = genai.Client(api_key=GOOGLE_API_KEY)
 
-def GPT_response(text, client, model_name):
+def GPT_response(text):
     """
     處理 Line Bot 接收到的訊息，並透過 Gemini 模型獲取回應。
 
@@ -218,7 +218,7 @@ def handle_message(event):
         )
     except:
         print(traceback.format_exc())
-        print(f"準備發送給 Line 的訊息: '{GPT_answer}'")
+        print(f"準備發送給 Line 的訊息: '{ai_response}'")
         line_bot_api.reply_message(event.reply_token, TextSendMessage('你所使用的OPENAI API key額度可能已經超過，請於後台Log內確認錯誤訊息'))
 
 @handler.add(PostbackEvent)
