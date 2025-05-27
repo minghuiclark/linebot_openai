@@ -77,6 +77,7 @@ def GPT_response(text):
     # 移除句號（如果這是您的需求）
     answer = full_answer.replace('。', '')
     #answer = full_answer['choices'][0]['text'].replace('。','')
+    print(f"GPT_response 返回的答案: '{answer}'")
     return answer
     
 def GPT_response1(text):
@@ -109,16 +110,35 @@ def callback():
 
 # 處理訊息
 @handler.add(MessageEvent, message=TextMessage)
-def handle_message(event):
+def handle_message-1(event):
     msg = event.message.text
     try:
         GPT_answer = GPT_response(msg)
         print(GPT_answer)
+        print(f"準備發送給 Line 的訊息: '{GPT_answer}'")
         line_bot_api.reply_message(event.reply_token, TextSendMessage(GPT_answer))
     except:
         print(traceback.format_exc())
+        print(f"準備發送給 Line 的訊息: '{GPT_answer}'")
         line_bot_api.reply_message(event.reply_token, TextSendMessage('你所使用的OPENAI API key額度可能已經超過，請於後台Log內確認錯誤訊息'))
-        
+
+def handle_message(event):
+    user_message = event.message.text
+    try:
+        ai_response = GPT_response(user_message)
+    
+        # 檢查 AI 響應是否為空
+        if not ai_response.strip(): # 使用 .strip() 移除空白字元後再檢查
+            ai_response = "很抱歉，我暫時無法生成回應。請再試一次或換個問題。"
+
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=ai_response)
+        )
+    except:
+        print(traceback.format_exc())
+        print(f"準備發送給 Line 的訊息: '{GPT_answer}'")
+        line_bot_api.reply_message(event.reply_token, TextSendMessage('你所使用的OPENAI API key額度可能已經超過，請於後台Log內確認錯誤訊息'))
 
 @handler.add(PostbackEvent)
 def handle_message(event):
