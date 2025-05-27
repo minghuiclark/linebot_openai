@@ -51,10 +51,24 @@ def GPT_response(text):
     full_answer = ""
     # 迭代生成器，逐塊獲取文本
     for chunk in response_stream:
-        # 每個 chunk 是一個 GenerateContentResponse 對象
-        # 它的 text 屬性包含部分響應
-        if chunk.text: # 檢查 chunk.text 是否為空，因為有時可能會返回空 chunk
-            full_answer += chunk.text
+        # **關鍵修改開始**
+        # 嘗試從 chunk 中獲取文本
+        try:
+            # 這是最直接的方式，嘗試獲取 chunk.text
+            # 如果 chunk 是 GenerateContentResponse 對象，這會成功
+            if hasattr(chunk, 'text') and chunk.text:
+                full_answer += chunk.text
+            # 如果 chunk 是一個具有 parts 屬性的對象 (例如 ResponseCandidate)
+            # 並且你想拼接所有 parts 的文本
+            elif hasattr(chunk, 'parts'):
+                for part in chunk.parts:
+                    if hasattr(part, 'text') and part.text:
+                        full_answer += part.text
+        except Exception as e:
+            # 捕獲其他可能的錯誤類型 (例如當 chunk 是 tuple 時)
+            print(f"警告：處理 chunk 時發生錯誤: {e}. Chunk type: {type(chunk)}, Chunk content: {chunk}")
+            # 您可以選擇跳過這個 chunk，或者根據需要進行其他處理
+            pass
 
     # 印出完整的響應文本 (用於調試，正式部署時可移除)
     print(full_answer) 
