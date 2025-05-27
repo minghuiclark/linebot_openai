@@ -68,20 +68,34 @@ def GPT_response(text):
 
         # 迭代生成器，逐塊獲取文本
         for chunk in response_stream:
-            # **關鍵修改處**
-            # 檢查 chunk 是否有 candidates，並且有內容
-            if chunk.candidates and chunk.candidates[0].content and chunk.candidates[0].content.parts:
-                for part in chunk.candidates[0].content.parts:
-                    if hasattr(part, 'text') and part.text:
-                        # print('印出 chunk.candidates[0].content.parts[0].text:', part.text) # 用於調試
-                        full_answer += part.text
+            # print(f"原始 chunk 類型: {type(chunk)}, 內容: {chunk}") # 僅用於調試
+
+            # 檢查 chunk 是否為 tuple
+            if isinstance(chunk, tuple) and len(chunk) == 2 and chunk[0] == 'candidates':
+                # 如果是 tuple，其內容在 chunk[1]
+                candidates_list = chunk[1]
+            elif hasattr(chunk, 'candidates'):
+                # 如果是預期的 GenerateContentResponse 物件
+                candidates_list = chunk.candidates
             else:
-                # 處理沒有文本內容的 chunk (例如安全過濾或其他非文本內容)
-                # print(f"警告：此 chunk 沒有可用的文本內容: {chunk}")
+                print(f"警告：無法識別的 chunk 結構: {type(chunk)}, 內容: {chunk}")
+                continue # 跳過無法處理的 chunk
+
+            if candidates_list:
+                # 遍歷所有候選答案 (通常只有一個)
+                for candidate in candidates_list:
+                    if candidate.content and candidate.content.parts:
+                        for part in candidate.content.parts:
+                            if hasattr(part, 'text') and part.text:
+                                # print('印出文本:', part.text) # 用於調試
+                                full_answer += part.text
+            else:
+                # 處理沒有候選答案的 chunk (例如安全過濾或其他非文本內容)
+                # print(f"警告：此 chunk 沒有可用的候選答案或文本內容: {chunk}")
                 pass # 您可以選擇跳過這個 chunk
 
     except Exception as e:
-        print(f"處理 Gemini 回應時發生錯誤: {e}. Chunk type: {type(chunk) if 'chunk' in locals() else 'N/A'}, Chunk content: {chunk if 'chunk' in locals() else 'N/A'}")
+        print(f"處理 Gemini 回應時發生錯誤: {e}")
         # 在實際應用中，您可能需要更好的錯誤處理機制
         return "很抱歉，處理您的請求時發生錯誤。"
 
@@ -90,7 +104,7 @@ def GPT_response(text):
 
     # 重組回應
     # 移除句號（如果這是您的需求）
-    answer = full_answer.replace('。', '') # 注意：如果模型回應沒有句號，這行不會有效果
+    answer = full_answer.replace('。', '')
     print(f"GPT_response 返回的答案: '{answer}'")
     return answer
 
