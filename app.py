@@ -14,6 +14,7 @@ import datetime
 from google import genai
 import time
 import traceback
+from dotenv import load_dotenv
 #======python的函數庫==========
 
 app = Flask(__name__)
@@ -27,6 +28,9 @@ handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 # genai.configure(api_key="gemini-2.0-flash-lite")
 
 
+# 載入 .env 檔案
+load_dotenv()
+
 def GPT_response(text):
     # 接收回應
     model_name = "gemini-2.0-flash-lite"
@@ -36,6 +40,7 @@ def GPT_response(text):
     print(response.text)
     # 重組回應
     answer = response['choices'][0]['text'].replace('。','')
+    #answer = response.text
     return answer
 
 
