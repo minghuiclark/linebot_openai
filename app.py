@@ -57,6 +57,7 @@ def GPT_response(text):
             # 這是最直接的方式，嘗試獲取 chunk.text
             # 如果 chunk 是 GenerateContentResponse 對象，這會成功
             if hasattr(chunk, 'text') and chunk.text:
+                print('印出chunk.text',chunk.text)
                 full_answer += chunk.text
             # 如果 chunk 是一個具有 parts 屬性的對象 (例如 ResponseCandidate)
             # 並且你想拼接所有 parts 的文本
@@ -109,9 +110,10 @@ def callback():
 
 
 # 處理訊息
-@handler.add(MessageEvent, message=TextMessage)
+#@handler.add(MessageEvent, message=TextMessage)
 def handle_message1(event):
     msg = event.message.text
+    
     try:
         GPT_answer = GPT_response(msg)
         print(GPT_answer)
@@ -121,9 +123,12 @@ def handle_message1(event):
         print(traceback.format_exc())
         print(f"準備發送給 Line 的訊息: '{GPT_answer}'")
         line_bot_api.reply_message(event.reply_token, TextSendMessage('你所使用的OPENAI API key額度可能已經超過，請於後台Log內確認錯誤訊息'))
-
+        
+@handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text
+    print(f"收到的 LINE 訊息: {user_message}")
+    
     try:
         ai_response = GPT_response(user_message)
     
