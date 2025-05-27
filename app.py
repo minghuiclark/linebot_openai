@@ -53,14 +53,6 @@ def GPT_response(text):
 
     full_answer = ""
     try:
-            # 獲取流式響應，確保 stream=True
-
-        # 獲取串流響應
-        # 注意這裡使用 genai.GenerativeModel 而不是 client.models.generate_content
-        # 因為 client 通常就是 genai 模組本身
-        # response_stream = client.GenerativeModel(model_name=model_name).generate_content(
-        #     contents=contents,            
-        # )
         response_stream = client.models.generate_content(
         model=model_name,
         contents=contents,
@@ -108,80 +100,6 @@ def GPT_response(text):
     print(f"GPT_response 返回的答案: '{answer}'")
     return answer
 
-# --- 如何使用 (範例) ---
-# 假設您已經安裝了 google-generativeai 庫並配置了 API Key
-# import os
-# genai.configure(api_key=os.environ["GEMINI_API_KEY"]) # 建議從環境變數讀取 API Key
-
-# client_instance = genai # 或者您可以根據您的初始化方式設定
-# model_used = "gemini-pro"
-
-# test_message = "你好，請給我一個關於貓的笑話。"
-# response_from_gemini = GPT_response(test_message, client_instance, model_used)
-# print("最終 Line Bot 回應:", response_from_gemini)
-
-
-def GPT_response2(text):
-    # 接收回應
-
-    contents = [
-        {
-            "parts": [
-                {"text": text}
-            ]
-        }
-    ]
-
-    # 獲取流式響應，確保 stream=True
-    response_stream = client.models.generate_content(
-        model=model_name,
-        contents=contents,
-    )
-
-    full_answer = ""
-    # 迭代生成器，逐塊獲取文本
-    for chunk in response_stream:
-        # **關鍵修改開始**
-        # 嘗試從 chunk 中獲取文本
-        try:
-            # 這是最直接的方式，嘗試獲取 chunk.text
-            # 如果 chunk 是 GenerateContentResponse 對象，這會成功
-            if hasattr(chunk, 'text') and chunk.text:
-                print('印出chunk.text',chunk.text)
-                full_answer += chunk.text
-            # 如果 chunk 是一個具有 parts 屬性的對象 (例如 ResponseCandidate)
-            # 並且你想拼接所有 parts 的文本
-            elif hasattr(chunk, 'parts'):
-                for part in chunk.parts:
-                    if hasattr(part, 'text') and part.text:
-                        full_answer += part.text
-        except Exception as e:
-            # 捕獲其他可能的錯誤類型 (例如當 chunk 是 tuple 時)
-            print(f"警告：處理 chunk 時發生錯誤: {e}. Chunk type: {type(chunk)}, Chunk content: {chunk}")
-            # 您可以選擇跳過這個 chunk，或者根據需要進行其他處理
-            pass
-
-    # 印出完整的響應文本 (用於調試，正式部署時可移除)
-    print(full_answer) 
-    
-    # 重組回應
-    # 移除句號（如果這是您的需求）
-    answer = full_answer.replace('。', '')
-    #answer = full_answer['choices'][0]['text'].replace('。','')
-    print(f"GPT_response 返回的答案: '{answer}'")
-    return answer
-    
-def GPT_response1(text):
-    # 接收回應   
-    
-    #response = openai.Completion.create(model="gpt-3.5-turbo-instruct", prompt=text, temperature=0.5, max_tokens=500)
-    response =client.models.generate_content_stream(model=model_name,contents=text)
-    print(response.text)
-    # 重組回應
-    answer = response['choices'][0]['text'].replace('。','')
-    #answer = response.text
-    return answer
-
 
 # 監聽所有來自 /callback 的 Post Request
 @app.route("/callback", methods=['POST'])
@@ -199,21 +117,7 @@ def callback():
     return 'OK'
 
 
-# 處理訊息
-#@handler.add(MessageEvent, message=TextMessage)
-def handle_message1(event):
-    msg = event.message.text
-    
-    try:
-        GPT_answer = GPT_response(msg)
-        print(GPT_answer)
-        print(f"準備發送給 Line 的訊息: '{GPT_answer}'")
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(GPT_answer))
-    except:
-        print(traceback.format_exc())
-        print(f"準備發送給 Line 的訊息: '{GPT_answer}'")
-        line_bot_api.reply_message(event.reply_token, TextSendMessage('你所使用的OPENAI API key額度可能已經超過，請於後台Log內確認錯誤訊息'))
-        
+# 處理訊息        
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text
