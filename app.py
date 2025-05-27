@@ -16,6 +16,8 @@ import time
 import traceback
 from dotenv import load_dotenv
 #======python的函數庫==========
+# 載入 .env 檔案
+load_dotenv()
 
 app = Flask(__name__)
 static_tmp_path = os.path.join(os.path.dirname(__file__), 'static', 'tmp')
@@ -26,15 +28,11 @@ handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 # OPENAI API Key初始化設定
 #openai.api_key = os.getenv('OPENAI_API_KEY')
 # genai.configure(api_key="gemini-2.0-flash-lite")
-
-
-# 載入 .env 檔案
-load_dotenv()
-
+model_name = "gemini-2.0-flash-lite"
+client = genai.Client(api_key=GOOGLE_API_KEY)
 def GPT_response(text):
-    # 接收回應
-    model_name = "gemini-2.0-flash-lite"
-    client = genai.Client(api_key=GOOGLE_API_KEY)
+    # 接收回應    
+    
     #response = openai.Completion.create(model="gpt-3.5-turbo-instruct", prompt=text, temperature=0.5, max_tokens=500)
     response =client.models.generate_content_stream(model=model_name,contents=text)
     print(response.text)
