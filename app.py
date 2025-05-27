@@ -75,8 +75,8 @@ def GPT_response(text):
     
     # 重組回應
     # 移除句號（如果這是您的需求）
-    #answer = full_answer.replace('。', '')
-    answer = full_answer['choices'][0]['text'].replace('。','')
+    answer = full_answer.replace('。', '')
+    #answer = full_answer['choices'][0]['text'].replace('。','')
     
 def GPT_response1(text):
     # 接收回應   
