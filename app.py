@@ -50,12 +50,13 @@ def GPT_response(text):
             ]
         }
     ]
-
+    con_text='你現在是專業的中文客服，請用正體中文回應，口氣輕鬆有禮。'
+    content=con_text+text
     full_answer = ""
     try:
         response_stream = client.models.generate_content(
         model=model_name,
-        contents=contents,
+        contents=content,
     )
 
         # 迭代生成器，逐塊獲取文本
