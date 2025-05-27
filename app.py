@@ -31,7 +31,78 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 model_name = "gemini-2.0-flash-lite"
 client = genai.Client(api_key=GOOGLE_API_KEY)
 
-def GPT_response(text):
+def GPT_response(text, client, model_name):
+    """
+    處理 Line Bot 接收到的訊息，並透過 Gemini 模型獲取回應。
+
+    Args:
+        text (str): Line Bot 接收到的輸入文字。
+        client: 已配置好的 Google Generative AI 客戶端物件 (例如 genai 模組本身)。
+        model_name (str): 要使用的 Gemini 模型名稱 (例如 "gemini-pro")。
+
+    Returns:
+        str: 從 Gemini 模型獲取並處理過的回應文字。
+    """
+    contents = [
+        {
+            "parts": [
+                {"text": text}
+            ]
+        }
+    ]
+
+    full_answer = ""
+    try:
+        # 獲取串流響應
+        # 注意這裡使用 genai.GenerativeModel 而不是 client.models.generate_content
+        # 因為 client 通常就是 genai 模組本身
+        response_stream = client.GenerativeModel(model_name=model_name).generate_content(
+            contents=contents,
+            stream=True # 確保是串流模式
+        )
+
+        # 迭代生成器，逐塊獲取文本
+        for chunk in response_stream:
+            # **關鍵修改處**
+            # 檢查 chunk 是否有 candidates，並且有內容
+            if chunk.candidates and chunk.candidates[0].content and chunk.candidates[0].content.parts:
+                for part in chunk.candidates[0].content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        # print('印出 chunk.candidates[0].content.parts[0].text:', part.text) # 用於調試
+                        full_answer += part.text
+            else:
+                # 處理沒有文本內容的 chunk (例如安全過濾或其他非文本內容)
+                # print(f"警告：此 chunk 沒有可用的文本內容: {chunk}")
+                pass # 您可以選擇跳過這個 chunk
+
+    except Exception as e:
+        print(f"處理 Gemini 回應時發生錯誤: {e}. Chunk type: {type(chunk) if 'chunk' in locals() else 'N/A'}, Chunk content: {chunk if 'chunk' in locals() else 'N/A'}")
+        # 在實際應用中，您可能需要更好的錯誤處理機制
+        return "很抱歉，處理您的請求時發生錯誤。"
+
+    # 印出完整的響應文本 (用於調試，正式部署時可移除)
+    print("完整的 Gemini 回應文本:", full_answer)
+
+    # 重組回應
+    # 移除句號（如果這是您的需求）
+    answer = full_answer.replace('。', '') # 注意：如果模型回應沒有句號，這行不會有效果
+    print(f"GPT_response 返回的答案: '{answer}'")
+    return answer
+
+# --- 如何使用 (範例) ---
+# 假設您已經安裝了 google-generativeai 庫並配置了 API Key
+# import os
+# genai.configure(api_key=os.environ["GEMINI_API_KEY"]) # 建議從環境變數讀取 API Key
+
+# client_instance = genai # 或者您可以根據您的初始化方式設定
+# model_used = "gemini-pro"
+
+# test_message = "你好，請給我一個關於貓的笑話。"
+# response_from_gemini = GPT_response(test_message, client_instance, model_used)
+# print("最終 Line Bot 回應:", response_from_gemini)
+
+
+def GPT_response2(text):
     # 接收回應
 
     contents = [
@@ -110,7 +181,7 @@ def callback():
 
 
 # 處理訊息
-@handler.add(MessageEvent, message=TextMessage)
+#@handler.add(MessageEvent, message=TextMessage)
 def handle_message1(event):
     msg = event.message.text
     
