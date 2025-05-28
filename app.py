@@ -33,7 +33,7 @@ client = genai.Client(api_key=GOOGLE_API_KEY)
 
 # 預載入 JSON
 
-with open("linebotJson.txt", "r", encoding="utf-8") as f:
+with open("customer_service.json", "r", encoding="utf-8") as f:
     data_cache = json.load(f)
 
 
@@ -43,7 +43,7 @@ def flatten_examples(data_dict):
     for category, items in data_dict.items():
         for entry in items:
             q = entry.get("問題", "").strip()
-            a = entry.get("回答", "").strip()
+            a = entry.get("回答", "")
             if not q or not a or a.lower() == "nan":
                 continue  # 略過無效的資料
             examples.append((q, a))
