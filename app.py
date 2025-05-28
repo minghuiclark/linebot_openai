@@ -13,6 +13,9 @@ import tempfile, os
 import datetime
 from google import genai
 import time
+import json
+import re
+import math  # 為了處理 NaN
 import traceback
 from dotenv import load_dotenv
 #======python的函數庫==========
@@ -31,75 +34,73 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 model_name = "gemini-2.0-flash-lite"
 client = genai.Client(api_key=GOOGLE_API_KEY)
 
-def GPT_response(text):
-    """
-    處理 Line Bot 接收到的訊息，並透過 Gemini 模型獲取回應。
 
-    Args:
-        text (str): Line Bot 接收到的輸入文字。
-        client: 已配置好的 Google Generative AI 客戶端物件 (例如 genai 模組本身)。
-        model_name (str): 要使用的 Gemini 模型名稱 (例如 "gemini-pro")。
+# 預載入 JSON
+with open("customer_responses.json", "r", encoding="utf-8") as f:
+    data_cache = json.load(f)
 
-    Returns:
-        str: 從 Gemini 模型獲取並處理過的回應文字。
-    """
-    contents = [
-        {
-            "parts": [
-                {"text": text}
-            ]
-        }
-    ]
-    con_text='你現在是專業的中文客服，請用正體中文回應，口氣輕鬆有禮。'
-    content=con_text+text
-    full_answer = ""
-    try:
-        response_stream = client.models.generate_content(
-        model=model_name,
-        contents=content,
+
+# 把 JSON 展平成單一列表形式
+def flatten_examples(data_dict):
+    examples = []
+    for category, items in data_dict.items():
+        for entry in items:
+            q = entry.get("問題", "").strip()
+            a = entry.get("回答", "").strip()
+            if not q or not a or a.lower() == "nan":
+                continue  # 略過無效的資料
+            examples.append((q, a))
+    return examples
+
+
+def build_prompt(user_input, examples):
+    system_prompt = "你是一位親切且專業的客服助手，請用正體中文簡潔且友善地回應客戶問題。"
+
+    few_shot_examples = "\n".join([
+        f"使用者輸入：「{q}」\n系統回應：「{a}」"
+        for q, a in examples[:3]  # 可視需要取更多範例
+    ])
+
+    task_prompt = (
+        f"{few_shot_examples}\n\n"
+        f"使用者輸入：「{user_input}」\n"
+        "請參考上方風格，回應最適合的內容。如果無法判斷，請回傳「請問您能再描述詳細一點嗎？」。"
     )
 
-        # 迭代生成器，逐塊獲取文本
-        for chunk in response_stream:
-            # print(f"原始 chunk 類型: {type(chunk)}, 內容: {chunk}") # 僅用於調試
+    return system_prompt + "\n\n" + task_prompt
 
-            # 檢查 chunk 是否為 tuple
-            if isinstance(chunk, tuple) and len(chunk) == 2 and chunk[0] == 'candidates':
-                # 如果是 tuple，其內容在 chunk[1]
-                candidates_list = chunk[1]
-            elif hasattr(chunk, 'candidates'):
-                # 如果是預期的 GenerateContentResponse 物件
-                candidates_list = chunk.candidates
-            else:
-                print(f"警告：無法識別的 chunk 結構: {type(chunk)}, 內容: {chunk}")
-                continue # 跳過無法處理的 chunk
 
-            if candidates_list:
-                # 遍歷所有候選答案 (通常只有一個)
-                for candidate in candidates_list:
+def get_response(text, client, model_name):
+    examples = flatten_examples(raw_data)
+    prompt = build_prompt(text, examples)
+
+    try:
+        response = client.models.generate_content(
+            model=model_name,
+            contents=[{"role": "user", "parts": [{"text": prompt}]}],
+        )
+
+        full_answer = ""
+        for chunk in response:
+            if chunk and chunk[1]:
+                for candidate in chunk[1]:
                     if candidate.content and candidate.content.parts:
                         for part in candidate.content.parts:
                             if hasattr(part, 'text') and part.text:
-                                # print('印出文本:', part.text) # 用於調試
                                 full_answer += part.text
-            else:
-                # 處理沒有候選答案的 chunk (例如安全過濾或其他非文本內容)
-                # print(f"警告：此 chunk 沒有可用的候選答案或文本內容: {chunk}")
-                pass # 您可以選擇跳過這個 chunk
+
+        answer = full_answer.strip()
+
+        # 若 Gemini 多說了，試圖只擷取「系統回應」部分
+        match = re.search(r"系統回應[:：]?[「\"](.+?)[」\"]", answer)
+        if match:
+            return match.group(1)
+
+        return answer or "請問您能再描述詳細一點嗎？"
 
     except Exception as e:
         print(f"處理 Gemini 回應時發生錯誤: {e}")
-        # 在實際應用中，您可能需要更好的錯誤處理機制
         return "很抱歉，處理您的請求時發生錯誤。"
-
-    # 印出完整的響應文本 (用於調試，正式部署時可移除)
-    print("完整的 Gemini 回應文本:", full_answer)
-
-    # 重組回應
-    # 移除句號（如果這是您的需求）
-    answer = full_answer.replace('。', '')
-    print(f"GPT_response 返回的答案: '{answer}'")
-    return answer
 
 
 # 監聽所有來自 /callback 的 Post Request
@@ -125,7 +126,7 @@ def handle_message(event):
     print(f"收到的 LINE 訊息: {user_message}")
     
     try:
-        ai_response = GPT_response(user_message)
+        ai_response = get_response(user_message)
     
         # 檢查 AI 響應是否為空
         if not ai_response.strip(): # 使用 .strip() 移除空白字元後再檢查
