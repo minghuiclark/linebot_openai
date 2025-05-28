@@ -1,11 +1,7 @@
 from flask import Flask, request, abort
 
-from linebot import (
-    LineBotApi, WebhookHandler
-)
-from linebot.exceptions import (
-    InvalidSignatureError
-)
+from linebot import (LineBotApi, WebhookHandler)
+from linebot.exceptions import (InvalidSignatureError)
 from linebot.models import *
 
 #======python的函數庫==========
@@ -36,6 +32,7 @@ client = genai.Client(api_key=GOOGLE_API_KEY)
 
 
 # 預載入 JSON
+
 with open("linebotJson.txt", "r", encoding="utf-8") as f:
     data_cache = json.load(f)
 
@@ -70,7 +67,7 @@ def build_prompt(user_input, examples):
     return system_prompt + "\n\n" + task_prompt
 
 
-def get_response(text, client, model_name):
+def get_response(text):
     examples = flatten_examples(data_cache)
     prompt = build_prompt(text, examples)
 
