@@ -3,7 +3,6 @@ from flask import Flask, request, abort
 from linebot import (LineBotApi, WebhookHandler)
 from linebot.exceptions import (InvalidSignatureError)
 from linebot.models import *
-
 #======python的函數庫==========
 import tempfile, os
 import datetime
@@ -44,7 +43,7 @@ def flatten_examples(data_dict):
         for entry in items:
             q = entry.get("問題", "").strip()
             a = entry.get("回答", "")
-            if not q or not a or a.lower() == "nan":
+            if not q or not a  == "nan":
                 continue  # 略過無效的資料
             examples.append((q, a))
     return examples
@@ -68,6 +67,10 @@ def build_prompt(user_input, examples):
 
 
 def get_response(text):
+    '''判斷文字內容所屬情境（根據 data_cache）
+
+        回傳一段文字，或一個特殊字串，如 "傳送貼圖"
+    '''
     examples = flatten_examples(data_cache)
     prompt = build_prompt(text, examples)
 
@@ -119,6 +122,8 @@ def callback():
 # 處理訊息        
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
+    '''根據 get_response() 回傳的內容，決定是 TextSendMessage 還是 StickerSendMessage
+    '''
     user_message = event.message.text
     print(f"收到的 LINE 訊息: {user_message}")
     
@@ -129,10 +134,15 @@ def handle_message(event):
         if not ai_response.strip(): # 使用 .strip() 移除空白字元後再檢查
             ai_response = "很抱歉，我暫時無法生成回應。請再試一次或換個問題。"
 
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=ai_response)
-        )
+        if ai_response == "傳送貼圖":
+            sticker = StickerSendMessage(package_id='789', sticker_id='10856')
+            line_bot_api.reply_message(event.reply_token, sticker)
+        else:
+            # 回傳純文字        
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text=ai_response)
+            )
     except:
         print(traceback.format_exc())
         print(f"準備發送給 Line 的訊息: '{ai_response}'")
