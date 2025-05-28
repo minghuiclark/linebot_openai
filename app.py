@@ -42,16 +42,16 @@ def get_response(user_input):
     '''
     system_prompt = "你是一位專業的客服助手，請用正體中文回應客戶問題。"
 
-    prompt = f'請判斷 {user_input} 裡面的文字屬於 {data_cache} 裡面的哪一項？符合條件請回傳對應的文字就好，不要有其他的文字與字元。'
+    prompt = f'請判斷 {user_input} 裡面的文字情境屬於 {data_cache} 裡面的哪一項？符合條件請回傳對應的文字就好，不要有其他的文字與字元。'
     content = system_prompt+prompt
+    print(f"發送給 Gemini 的內容: {content}")
 
     response = client.models.generate_content(
         model=model_name,
         contents=content,)
     
     print('='*10)
-    answer = re.sub(r'[^A-Za-z]', '', response.text)
-
+    answer = response.text
     print(answer)
 
     return answer
@@ -78,19 +78,23 @@ def callback():
 def handle_message(event):
     '''根據 get_response() 回傳的內容，決定是 TextSendMessage 還是 StickerSendMessage
     '''
-    user_message = event.message.text
-    user_id = event.source.user_id
     msg_type = event.message.type
+    user_id = event.source.user_id
     print(f"收到的 LINE 訊息:從{user_id} 收到 {user_message}")
+
     if msg_type== 'sticker':
+        print(f"收到的 LINE 訊息:從{user_id} 收到 貼圖")
+
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text='請問有什麼需要協助的嗎？')
         )
-        return
+        
     else:
+        user_message = event.message.text
         try:
             ai_response = get_response(user_message)
+            print(f"準備發送給 Line 的訊息: '{ai_response}'")
         
             # 檢查 AI 響應是否為空
             if not ai_response.strip(): # 使用 .strip() 移除空白字元後再檢查
@@ -109,7 +113,7 @@ def handle_message(event):
                 )
         except:
             print(traceback.format_exc())
-            print(f"準備發送給 Line 的訊息: '{ai_response}'")
+            #print(f"準備發送給 Line 的訊息: '{ai_response}'")
             line_bot_api.reply_message(event.reply_token, TextSendMessage('你所使用的OPENAI API key額度可能已經超過，請於後台Log內確認錯誤訊息'))
 
 @handler.add(PostbackEvent)
