@@ -74,8 +74,8 @@ def callback():
 
 
 # 處理訊息        
-#@handler.add(MessageEvent, message=TextMessage)
-@handler.add(MessageEvent, message=Message)
+#@handler.add(MessageEvent, message=Message)
+@handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     '''根據 get_response() 回傳的內容，決定是 TextSendMessage 還是 StickerSendMessage
     '''
@@ -92,7 +92,7 @@ def handle_message(event):
         
     else:
         user_message = event.message.text
-        print(f"收到的 LINE 文字訊息:從{user_id} 收到 {user_message}")
+        print(f"收到的 LINE 訊息:從{user_id} 收到 {user_message}")
         try:
             ai_response = get_response(user_message)
             print(f"準備發送給 Line 的訊息: '{ai_response}'")
