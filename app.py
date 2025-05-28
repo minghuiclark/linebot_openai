@@ -80,7 +80,6 @@ def handle_message(event):
     '''
     msg_type = event.message.type
     user_id = event.source.user_id
-    print(f"收到的 LINE 訊息:從{user_id} 收到 {user_message}")
 
     if msg_type== 'sticker':
         print(f"收到的 LINE 訊息:從{user_id} 收到 貼圖")
@@ -92,6 +91,7 @@ def handle_message(event):
         
     else:
         user_message = event.message.text
+        print(f"收到的 LINE 訊息:從{user_id} 收到 {user_message}")
         try:
             ai_response = get_response(user_message)
             print(f"準備發送給 Line 的訊息: '{ai_response}'")
