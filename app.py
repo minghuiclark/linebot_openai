@@ -81,22 +81,41 @@ def get_response(text):
         )
 
         full_answer = ""
+        # 迭代生成器，逐塊獲取文本
         for chunk in response:
-            if chunk and chunk[1]:
-                for candidate in chunk[1]:
+            # print(f"原始 chunk 類型: {type(chunk)}, 內容: {chunk}") # 僅用於調試
+
+            # 檢查 chunk 是否為 tuple
+            if isinstance(chunk, tuple) and len(chunk) == 2 and chunk[0] == 'candidates':
+                # 如果是 tuple，其內容在 chunk[1]
+                candidates_list = chunk[1]
+            elif hasattr(chunk, 'candidates'):
+                # 如果是預期的 GenerateContentResponse 物件
+                candidates_list = chunk.candidates
+            else:
+                print(f"警告：無法識別的 chunk 結構: {type(chunk)}, 內容: {chunk}")
+                continue  # 跳過無法處理的 chunk
+
+            if candidates_list:
+                # 遍歷所有候選答案 (通常只有一個)
+                for candidate in candidates_list:
                     if candidate.content and candidate.content.parts:
                         for part in candidate.content.parts:
                             if hasattr(part, 'text') and part.text:
+                                # print('印出文本:', part.text) # 用於調試
                                 full_answer += part.text
+            else:
+                # 處理沒有候選答案的 chunk (例如安全過濾或其他非文本內容)
+                # print(f"警告：此 chunk 沒有可用的候選答案或文本內容: {chunk}")
+                pass  # 您可以選擇跳過這個 chunk
 
-        answer = full_answer.strip()
 
         # 若 Gemini 多說了，試圖只擷取「系統回應」部分
-        match = re.search(r"系統回應[:：]?[「\"](.+?)[」\"]", answer)
+        match = re.search(r"系統回應[:：]?[「\"](.+?)[」\"]", full_answer)
         if match:
             return match.group(1)
 
-        return answer or "請問您能再描述詳細一點嗎？"
+        return full_answer or "請問您能再描述詳細一點嗎？"
 
     except Exception as e:
         print(f"處理 Gemini 回應時發生錯誤: {e}")
