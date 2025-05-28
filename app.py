@@ -35,91 +35,26 @@ client = genai.Client(api_key=GOOGLE_API_KEY)
 with open("customer_service.json", "r", encoding="utf-8") as f:
     data_cache = json.load(f)
 
-
-# 把 JSON 展平成單一列表形式
-def flatten_examples(data_dict):
-    examples = []
-    for category, items in data_dict.items():
-        for entry in items:
-            q = entry.get("問題", "").strip()
-            a = entry.get("回答", "")
-            if not q or not a  == "nan":
-                continue  # 略過無效的資料
-            examples.append((q, a))
-    return examples
-
-
-def build_prompt(user_input, examples):
-    system_prompt = "你是一位親切且專業的客服助手，請用正體中文簡潔且友善地回應客戶問題。"
-
-    few_shot_examples = "\n".join([
-        f"使用者輸入：「{q}」\n系統回應：「{a}」"
-        for q, a in examples[:3]  # 可視需要取更多範例
-    ])
-
-    task_prompt = (
-        f"{few_shot_examples}\n\n"
-        f"使用者輸入：「{user_input}」\n"
-        "請參考上方風格，回應最適合的內容。如果無法判斷，請回傳「請問您能再描述詳細一點嗎？」。"
-    )
-
-    return system_prompt + "\n\n" + task_prompt
-
-
-def get_response(text):
+def get_response(user_input):
     '''判斷文字內容所屬情境（根據 data_cache）
 
         回傳一段文字，或一個特殊字串，如 "傳送貼圖"
     '''
-    examples = flatten_examples(data_cache)
-    prompt = build_prompt(text, examples)
+    system_prompt = "你是一位專業的客服助手，請用正體中文回應客戶問題。"
 
-    try:
-        response = client.models.generate_content(
-            model=model_name,
-            contents=[{"role": "user", "parts": [{"text": prompt}]}],
-        )
+    prompt = f'請判斷 {user_input} 裡面的文字屬於 {data_cache} 裡面的哪一項？符合條件請回傳對應的文字就好，不要有其他的文字與字元。'
+    content = system_prompt+prompt
 
-        full_answer = ""
-        # 迭代生成器，逐塊獲取文本
-        for chunk in response:
-            # print(f"原始 chunk 類型: {type(chunk)}, 內容: {chunk}") # 僅用於調試
+    response = client.models.generate_content(
+        model=model_name,
+        contents=content,)
+    
+    print('='*10)
+    answer = re.sub(r'[^A-Za-z]', '', response.text)
 
-            # 檢查 chunk 是否為 tuple
-            if isinstance(chunk, tuple) and len(chunk) == 2 and chunk[0] == 'candidates':
-                # 如果是 tuple，其內容在 chunk[1]
-                candidates_list = chunk[1]
-            elif hasattr(chunk, 'candidates'):
-                # 如果是預期的 GenerateContentResponse 物件
-                candidates_list = chunk.candidates
-            else:
-                print(f"警告：無法識別的 chunk 結構: {type(chunk)}, 內容: {chunk}")
-                continue  # 跳過無法處理的 chunk
+    print(answer)
 
-            if candidates_list:
-                # 遍歷所有候選答案 (通常只有一個)
-                for candidate in candidates_list:
-                    if candidate.content and candidate.content.parts:
-                        for part in candidate.content.parts:
-                            if hasattr(part, 'text') and part.text:
-                                # print('印出文本:', part.text) # 用於調試
-                                full_answer += part.text
-            else:
-                # 處理沒有候選答案的 chunk (例如安全過濾或其他非文本內容)
-                # print(f"警告：此 chunk 沒有可用的候選答案或文本內容: {chunk}")
-                pass  # 您可以選擇跳過這個 chunk
-
-
-        # 若 Gemini 多說了，試圖只擷取「系統回應」部分
-        match = re.search(r"系統回應[:：]?[「\"](.+?)[」\"]", full_answer)
-        if match:
-            return match.group(1)
-
-        return full_answer or "請問您能再描述詳細一點嗎？"
-
-    except Exception as e:
-        print(f"處理 Gemini 回應時發生錯誤: {e}")
-        return "很抱歉，處理您的請求時發生錯誤。"
+    return answer
 
 
 # 監聽所有來自 /callback 的 Post Request
@@ -144,28 +79,38 @@ def handle_message(event):
     '''根據 get_response() 回傳的內容，決定是 TextSendMessage 還是 StickerSendMessage
     '''
     user_message = event.message.text
-    print(f"收到的 LINE 訊息: {user_message}")
-    
-    try:
-        ai_response = get_response(user_message)
-    
-        # 檢查 AI 響應是否為空
-        if not ai_response.strip(): # 使用 .strip() 移除空白字元後再檢查
-            ai_response = "很抱歉，我暫時無法生成回應。請再試一次或換個問題。"
+    user_id = event.source.user_id
+    msg_type = event.message.type
+    print(f"收到的 LINE 訊息:從{user_id} 收到 {user_message}")
+    if msg_type== 'sticker':
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='請問有什麼需要協助的嗎？')
+        )
+        return
+    else:
+        try:
+            ai_response = get_response(user_message)
+        
+            # 檢查 AI 響應是否為空
+            if not ai_response.strip(): # 使用 .strip() 移除空白字元後再檢查
+                ai_response = "很抱歉，我暫時無法生成回應。請再試一次或換個問題。"
 
-        if ai_response == "傳送貼圖":
-            sticker = StickerSendMessage(package_id='789', sticker_id='10856')
-            line_bot_api.reply_message(event.reply_token, sticker)
-        else:
-            # 回傳純文字        
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text=ai_response)
-            )
-    except:
-        print(traceback.format_exc())
-        print(f"準備發送給 Line 的訊息: '{ai_response}'")
-        line_bot_api.reply_message(event.reply_token, TextSendMessage('你所使用的OPENAI API key額度可能已經超過，請於後台Log內確認錯誤訊息'))
+            if ai_response == "傳送貼圖":
+                sticker = StickerSendMessage(package_id='789', sticker_id='10856')
+                line_bot_api.reply_message(event.reply_token, sticker)
+
+                
+            else:
+                # 回傳純文字        
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=ai_response)
+                )
+        except:
+            print(traceback.format_exc())
+            print(f"準備發送給 Line 的訊息: '{ai_response}'")
+            line_bot_api.reply_message(event.reply_token, TextSendMessage('你所使用的OPENAI API key額度可能已經超過，請於後台Log內確認錯誤訊息'))
 
 @handler.add(PostbackEvent)
 def handle_message(event):
