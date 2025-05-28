@@ -52,7 +52,7 @@ def get_response(user_input):
     
     print('='*10)
     answer = response.text
-    print(answer)
+    print('從ai 收到的回應',answer)
 
     return answer
 
@@ -101,6 +101,7 @@ def handle_message(event):
                 ai_response = "很抱歉，我暫時無法生成回應。請再試一次或換個問題。"
 
             if ai_response == "傳送貼圖":
+                print(f"進入貼圖區")
                 sticker = StickerSendMessage(package_id='789', sticker_id='10856')
                 line_bot_api.reply_message(event.reply_token, sticker)
 
