@@ -74,8 +74,8 @@ def callback():
 
 
 # 處理訊息        
-#@handler.add(MessageEvent, message=Message)
-@handler.add(MessageEvent, message=TextMessage)
+#@handler.add(MessageEvent, message=TextMessage)
+@handler.add(MessageEvent, message=(TextMessage, StickerMessage))
 def handle_message(event):
     '''根據 get_response() 回傳的內容，決定是 TextSendMessage 還是 StickerSendMessage
     '''
@@ -101,7 +101,7 @@ def handle_message(event):
             if not ai_response.strip(): # 使用 .strip() 移除空白字元後再檢查
                 ai_response = "很抱歉，我暫時無法生成回應。請再試一次或換個問題。"
 
-            if ai_response == "傳送貼圖":
+            if  "貼圖" in ai_response:
                 print(f"進入貼圖區")
                 sticker = StickerSendMessage(package_id='789', sticker_id='10856')
                 line_bot_api.reply_message(event.reply_token, sticker)
