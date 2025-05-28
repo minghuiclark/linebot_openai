@@ -3,6 +3,7 @@ from flask import Flask, request, abort
 from linebot import (LineBotApi, WebhookHandler)
 from linebot.exceptions import (InvalidSignatureError)
 from linebot.models import *
+from linebot.v3.webhooks import MessageEvent, TextMessageContent, StickerMessageContent
 #======python的函數庫==========
 import tempfile, os
 import datetime
@@ -74,9 +75,9 @@ def callback():
 
 
 # 處理訊息        
-
 #@handler.add(MessageEvent, message=(TextMessage, StickerMessage))
-@handler.add(MessageEvent, message=TextMessage)
+#@handler.add(MessageEvent, message=TextMessage)
+@handler.add(MessageEvent, message=(TextMessageContent, StickerMessageContent))
 def handle_message(event):
     '''根據 get_response() 回傳的內容，決定是 TextSendMessage 還是 StickerSendMessage
     '''
