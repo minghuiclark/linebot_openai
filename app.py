@@ -71,7 +71,7 @@ def build_prompt(user_input, examples):
 
 
 def get_response(text, client, model_name):
-    examples = flatten_examples(raw_data)
+    examples = flatten_examples(data_cache)
     prompt = build_prompt(text, examples)
 
     try:
