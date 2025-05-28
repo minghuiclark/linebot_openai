@@ -36,7 +36,7 @@ client = genai.Client(api_key=GOOGLE_API_KEY)
 
 
 # 預載入 JSON
-with open("customer_responses.json", "r", encoding="utf-8") as f:
+with open("linebotJson.txt", "r", encoding="utf-8") as f:
     data_cache = json.load(f)
 
 
